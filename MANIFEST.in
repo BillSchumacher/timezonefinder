@@ -1,19 +1,17 @@
 global-exclude *.py[cod]
 
-include .pre-commit-config.yaml
 include CHANGELOG.rst
 include CONTRIBUTING.rst
 include LICENSE
-include Makefile
 include README.rst
 include VERSION
 include parse_data.sh
 include .editorconfig
 include .coveragerc
 include tox.ini
-include pyproject.toml
-include poetry.lock
+include requirements*
 include runtests.py
+include .pre-commit-config.yaml
 
 recursive-include timezonefinder *.bin
 recursive-include timezonefinder *.json
