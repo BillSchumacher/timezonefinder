@@ -23,7 +23,7 @@ def poly_conversion_fct(coords):
 
 def test_dtype_conversion():
     # coordinates (float) to int
-    coord_values = [float(x) for x in range(-2, 3, 1)]
+    coord_values = [float(x) for x in range(-2, 3)]
     coord_polygon = (coord_values, coord_values)
     polygon_int = poly_conversion_fct(coord_polygon)
     int_values = [utils.coord2int(x) for x in coord_values]
@@ -36,14 +36,14 @@ def test_dtype_conversion():
 
 
 def test_convert2coord_pairs():
-    coord_values = [float(x) for x in range(-2, 3, 1)]
+    coord_values = [float(x) for x in range(-2, 3)]
     coord_polygon = (coord_values, coord_values)
     polygon_int = poly_conversion_fct(coord_polygon)
     assert utils.convert2coord_pairs(polygon_int) == list(zip(coord_values, coord_values))
 
 
 def test_convert2coords():
-    coord_values = [float(x) for x in range(-2, 3, 1)]
+    coord_values = [float(x) for x in range(-2, 3)]
     coord_polygon = (coord_values, coord_values)
     polygon_int = poly_conversion_fct(coord_polygon)
     assert utils.convert2coords(polygon_int) == [coord_values, coord_values]

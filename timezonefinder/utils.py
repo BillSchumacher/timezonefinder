@@ -70,11 +70,9 @@ def inside_polygon(x, y, coordinates):
      -> use int64 when comparing slopes!
     """
     contained = False
-    # the edge from the last to the first point is checked first
-    i = -1
     y1 = coordinates[1, -1]
     y_gt_y1 = y > y1
-    for y2 in coordinates[1]:
+    for i, y2 in enumerate(coordinates[1], start=-1):
         y_gt_y2 = y > y2
         if y_gt_y1 ^ y_gt_y2:  # XOR
             # [p1-p2] crosses horizontal line in p
@@ -83,38 +81,36 @@ def inside_polygon(x, y, coordinates):
             # only count crossings "right" of the point ( >= x)
             x_le_x1 = x <= x1
             x_le_x2 = x <= x2
-            if x_le_x1 or x_le_x2:
-                if x_le_x1 and x_le_x2:
-                    # p1 and p2 are both to the right -> valid crossing
-                    contained = not contained
-                else:
-                    # compare the slope of the line [p1-p2] and [p-p2]
-                    # depending on the position of p2 this determines whether
-                    # the polygon edge is right or left of the point
-                    # to avoid expensive division the divisors (of the slope dy/dx) are brought to the other side
-                    # ( dy/dx > a  ==  dy > a * dx )
-                    # only one of the points is to the right
-                    # NOTE: int64 precision required to prevent overflow
-                    y_64 = int64(y)
-                    y1_64 = int64(y1)
-                    y2_64 = int64(y2)
-                    x_64 = int64(x)
-                    x1_64 = int64(x1)
-                    x2_64 = int64(x2)
-                    slope1 = (y2_64 - y_64) * (x2_64 - x1_64)
-                    slope2 = (y2_64 - y1_64) * (x2_64 - x_64)
+            if x_le_x1 and x_le_x2:
+                # p1 and p2 are both to the right -> valid crossing
+                contained = not contained
+            elif x_le_x1 or x_le_x2:
+                # compare the slope of the line [p1-p2] and [p-p2]
+                # depending on the position of p2 this determines whether
+                # the polygon edge is right or left of the point
+                # to avoid expensive division the divisors (of the slope dy/dx) are brought to the other side
+                # ( dy/dx > a  ==  dy > a * dx )
+                # only one of the points is to the right
+                # NOTE: int64 precision required to prevent overflow
+                y_64 = int64(y)
+                y1_64 = int64(y1)
+                y2_64 = int64(y2)
+                x_64 = int64(x)
+                x1_64 = int64(x1)
+                x2_64 = int64(x2)
+                slope1 = (y2_64 - y_64) * (x2_64 - x1_64)
+                slope2 = (y2_64 - y1_64) * (x2_64 - x_64)
                     # NOTE: accept slope equality to also detect if p lies directly on an edge
-                    if y_gt_y1:
-                        if slope1 <= slope2:
-                            contained = not contained
-                    elif slope1 >= slope2:  # NOT y_gt_y1
-                        contained = not contained
-
+                if (
+                    y_gt_y1
+                    and slope1 <= slope2
+                    or not y_gt_y1
+                    and slope1 >= slope2
+                ):
+                    contained = not contained
         # next point
         y1 = y2
         y_gt_y1 = y_gt_y2
-        i += 1
-
     return contained
 
 
@@ -163,30 +159,20 @@ def convert2coords(polygon_data):
 
 @njit(cache=True)
 def convert2coord_pairs(polygon_data):
-    # return a list of coordinate tuples (x,y)
-    coodinate_list = []
-    i = 0
-    for x in polygon_data[0]:
-        coodinate_list.append((int2coord(x), int2coord(polygon_data[1][i])))
-        i += 1
-    return coodinate_list
+    return [
+        (int2coord(x), int2coord(polygon_data[1][i]))
+        for i, x in enumerate(polygon_data[0])
+    ]
 
 
 @njit(cache=True)
 def any_pt_in_poly(coords1, coords2):
-    # pt = points[:, i]
-    for pt in coords1.T:
-        if inside_polygon(pt[0], pt[1], coords2):
-            return True
-    return False
+    return any(inside_polygon(pt[0], pt[1], coords2) for pt in coords1.T)
 
 
 @njit(cache=True)
 def fully_contained_in_hole(poly: np.ndarray, hole: np.ndarray) -> bool:
-    for pt in poly.T:
-        if not inside_polygon(pt[0], pt[1], hole):
-            return False
-    return True
+    return all(inside_polygon(pt[0], pt[1], hole) for pt in poly.T)
 
 
 def validate_coordinates(lng, lat):
@@ -205,6 +191,4 @@ def fromfile_memory(file, **kwargs):
 
 
 def is_ocean_timezone(timezone_name: str) -> bool:
-    if re.match(OCEAN_TIMEZONE_PREFIX, timezone_name) is None:
-        return False
-    return True
+    return re.match(OCEAN_TIMEZONE_PREFIX, timezone_name) is not None

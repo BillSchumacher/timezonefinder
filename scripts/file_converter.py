@@ -232,8 +232,7 @@ def parse_polygons_from_json(input_path: Path) -> int:
     # there are two floats per coordinate (lng, lat)
     nr_of_floats = 2 * sum(polygon_lengths)
     print(f"{nr_of_floats:,} floats in all the polygons (2 per point)")
-    polygon_space = nr_of_floats * NR_BYTES_I
-    return polygon_space
+    return nr_of_floats * NR_BYTES_I
 
 
 def update_zone_names(output_path):
@@ -349,11 +348,7 @@ class Boundaries(NamedTuple):
             return False
         if self.xmax < other.xmin:
             return False
-        if self.ymin > other.ymax:
-            return False
-        if self.ymax < other.ymin:
-            return False
-        return True
+        return False if self.ymin > other.ymax else self.ymax >= other.ymin
 
 
 @dataclass
@@ -421,8 +416,7 @@ class Hex:
     def is_poly_candidate(self, poly_id: int) -> bool:
         cell_bounds = self.bounds
         poly_bounds = poly_boundaries[poly_id]
-        overlapping = cell_bounds.overlaps(poly_bounds)
-        return overlapping
+        return cell_bounds.overlaps(poly_bounds)
 
     @property
     def poly_candidates(self) -> Set[int]:
@@ -689,17 +683,9 @@ def compile_polygon_binaries(output_path):
     for i, poly_id in enumerate(polynrs_of_holes):
         try:
             amount_of_holes, hole_id = hole_registry[poly_id]
-            hole_registry.update(
-                {
-                    poly_id: (amount_of_holes + 1, hole_id),
-                }
-            )
+            hole_registry[poly_id] = (amount_of_holes + 1, hole_id)
         except KeyError:
-            hole_registry.update(
-                {
-                    poly_id: (1, i),
-                }
-            )
+            hole_registry[poly_id] = (1, i)
 
     with open(join(output_path, HOLE_REGISTRY_FILE), "w") as json_file:
         json.dump(hole_registry, json_file, indent=4)

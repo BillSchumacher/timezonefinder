@@ -68,11 +68,7 @@ class AbstractTimezoneFinder(ABC):
     ):
         self.in_memory = in_memory
 
-        if self.in_memory:
-            self._fromfile = fromfile_memory
-        else:
-            self._fromfile = np.fromfile
-
+        self._fromfile = fromfile_memory if self.in_memory else np.fromfile
         # open all the files in binary reading mode
         # for more info on what is stored in which .bin file, please read the comments in file_converter.py
         if bin_file_location is None:
@@ -142,8 +138,7 @@ class AbstractTimezoneFinder(ABC):
 
     def get_shortcut_polys(self, *, lng: float, lat: float) -> np.ndarray:
         hex_id = h3.geo_to_h3(lat, lng, SHORTCUT_H3_RES)
-        shortcut_poly_ids = self.shortcut_mapping[hex_id]
-        return shortcut_poly_ids
+        return self.shortcut_mapping[hex_id]
 
     def most_common_zone_id(self, *, lng: float, lat: float) -> Optional[int]:
         polys = self.get_shortcut_polys(lng=lng, lat=lat)
@@ -165,10 +160,7 @@ class AbstractTimezoneFinder(ABC):
             return self.zone_id_of(polys[0])
         zones = self.zone_ids_of(polys)
         zones_unique = np.unique(zones)
-        if len(zones_unique) == 1:
-            return zones_unique[0]
-        # more than one zone in this shortcut
-        return None
+        return zones_unique[0] if len(zones_unique) == 1 else None
 
     @abstractmethod
     def timezone_at(self, *, lng: float, lat: float) -> Optional[str]:
@@ -193,9 +185,7 @@ class AbstractTimezoneFinder(ABC):
             ``None`` when an ocean timezone ("Etc/GMT+-XX") has been matched.
         """
         tz_name = self.timezone_at(lng=lng, lat=lat)
-        if tz_name is not None and is_ocean_timezone(tz_name):
-            return None
-        return tz_name
+        return None if tz_name is not None and is_ocean_timezone(tz_name) else tz_name
 
     def unique_timezone_at(self, *, lng: float, lat: float) -> Optional[str]:
         """returns the name of a unique zone within the corresponding shortcut
@@ -206,9 +196,7 @@ class AbstractTimezoneFinder(ABC):
         """
         validate_coordinates(lng, lat)
         unique_id = self.unique_zone_id(lng=lng, lat=lat)
-        if unique_id is None:
-            return None
-        return self.zone_name_from_id(unique_id)
+        return None if unique_id is None else self.zone_name_from_id(unique_id)
 
 
 class TimezoneFinderL(AbstractTimezoneFinder):
@@ -313,15 +301,14 @@ class TimezoneFinder(AbstractTimezoneFinder):
             )
 
     def get_polygon(self, polygon_nr: int, coords_as_pairs: bool = False):
-        list_of_converted_polygons = []
-        if coords_as_pairs:
-            conversion_method = convert2coord_pairs
-        else:
-            conversion_method = convert2coords
-        list_of_converted_polygons.append(conversion_method(self.coords_of(polygon_nr=polygon_nr)))
+        conversion_method = convert2coord_pairs if coords_as_pairs else convert2coords
+        list_of_converted_polygons = [
+            conversion_method(self.coords_of(polygon_nr=polygon_nr))
+        ]
 
-        for hole in self._holes_of_poly(polygon_nr):
-            list_of_converted_polygons.append(conversion_method(hole))
+        list_of_converted_polygons.extend(
+            conversion_method(hole) for hole in self._holes_of_poly(polygon_nr)
+        )
 
         return list_of_converted_polygons
 
@@ -382,15 +369,16 @@ class TimezoneFinder(AbstractTimezoneFinder):
         if self.outside_the_boundaries_of(poly_id, x, y):
             return False
 
-        if not inside_polygon(x, y, self.coords_of(polygon_nr=poly_id)):
-            return False
-
-        # when the point is within a hole of the polygon, this timezone must not be returned
-        if any(iter(inside_polygon(x, y, hole) for hole in self._holes_of_poly(poly_id))):
-            return False
-
-        # the query point is included in this polygon, but not any hole
-        return True
+        return (
+            not any(
+                iter(
+                    inside_polygon(x, y, hole)
+                    for hole in self._holes_of_poly(poly_id)
+                )
+            )
+            if inside_polygon(x, y, self.coords_of(polygon_nr=poly_id))
+            else False
+        )
 
     def timezone_at(self, *, lng: float, lat: float) -> Optional[str]:
         """computes in which ocean OR land timezone a point is included in
