@@ -45,7 +45,7 @@ def time_preprocess(time):
     valid_digits = 4
     zero_digits = abs(min(0, int(log10(time))))
     digits_to_print = zero_digits + valid_digits
-    return str(round(time, digits_to_print)) + "s"
+    return f"{str(round(time, digits_to_print))}s"
 
 
 def ocean2land(test_locations):
@@ -294,7 +294,7 @@ class TimezonefinderClassTest(BaseTimezoneFinderClassTest):
 
         warnings.filterwarnings("error")
         # must not raise a warning
-        self.test_instance.certain_timezone_at(lat=float(latitude), lng=float(longitude))
+        self.test_instance.certain_timezone_at(lat=latitude, lng=longitude)
 
     def test_get_geometry(self):
         print("testing get_geometry():")

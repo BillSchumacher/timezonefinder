@@ -164,7 +164,7 @@ if __name__ == "__main__":
         if inp == 1:
             os.system("git checkout dev")
             print("==============")
-        if inp == 2:
+        elif inp == 2:
             sys.exit()
     except ValueError:
         pass
@@ -186,8 +186,6 @@ if __name__ == "__main__":
             print(
                 f'Invalid version input. Should be of format "x.x.xxx" and higher than the old version {old_version}.'
             )
-            pass  # try again
-
     version = get_version()
     print("the version number has been set to:", version)
     print("=====================")

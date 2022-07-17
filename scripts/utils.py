@@ -68,8 +68,9 @@ def to_numpy_polygon(coord_pairs, flipped: bool = False) -> np.ndarray:
         y_coords.pop(-1)
     assert len(x_coords) == len(y_coords)
     assert len(x_coords) >= 3
-    poly = np.array((x_coords, y_coords), dtype=configs.DTYPE_FORMAT_SIGNED_I_NUMPY)
-    return poly
+    return np.array(
+        (x_coords, y_coords), dtype=configs.DTYPE_FORMAT_SIGNED_I_NUMPY
+    )
 
 
 def accumulated_frequency(int_list):
